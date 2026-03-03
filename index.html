@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الخشاب الذكي</title>
+    <style>
+        :root {
+            --bg-body: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc;
+            --text-muted: #94a3b8; --primary: #8b5cf6; --secondary: #10b981;
+            --danger: #ef4444; --warning: #f59e0b; --border: #334155; --info: #3b82f6;
+        }
+
+        .light-mode {
+            --bg-body: #f1f5f9; --bg-card: #ffffff; --text-main: #1e293b;
+            --text-muted: #64748b; --primary: #6366f1; --secondary: #059669;
+            --danger: #dc2626; --warning: #d97706; --border: #e2e8f0; --info: #2563eb;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding: 0; transition: 0.3s; overflow-x: hidden; }
+        
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-body); display: flex; align-items: center; justify-content: center;
+            z-index: 9999; transition: 0.5s;
+        }
+        .login-box {
+            background: var(--bg-card); padding: 40px; border-radius: 24px;
+            border: 1px solid var(--border); width: 90%; max-width: 400px;
+            text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3);
+        }
+        .login-box h1 { margin-bottom: 10px; color: var(--primary); font-size: 1.8rem; }
+        .login-box p { color: var(--text-muted); margin-bottom: 30px; }
+        .input-group { margin-bottom: 20px; text-align: right; }
+        .input-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-muted); }
+        .input-group input {
+            width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--border);
+            background: var(--bg-body); color: var(--text-main); outline: none; box-sizing: border-box;
+        }
+        .login-btn {
+            width: 100%; padding: 14px; border-radius: 10px; border: none;
+            background: var(--primary); color: white; font-weight: bold; cursor: pointer; font-size: 1rem;
+        }
+
+        #welcome-toast {
+            position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+            background: var(--secondary); color: white; padding: 15px 40px;
+            border-radius: 50px; font-weight: bold; box-shadow: 0 10px 15px rgba(0,0,0,0.2);
+            transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 10000;
+        }
+        #welcome-toast.show { top: 30px; }
+
+        #main-content { display: none; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px; background: var(--bg-card); border-radius: 15px; border: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+        
+        .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; font-size: 14px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+
+        .section { display: none; animation: fadeIn 0.4s ease; }
+        .active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 20px; }
+        .stat-card { background: var(--bg-card); padding: 20px; border-radius: 20px; border: 1px solid var(--border); text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .stat-card h3 { margin: 0; font-size: 0.9rem; color: var(--text-muted); }
+        .stat-card .value { font-size: 1.8rem; font-weight: 800; margin: 10px 0; }
+        .total-card { border-top: 5px solid var(--info); background: rgba(59, 130, 246, 0.05); }
+
+        .inventory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .p-card { background: var(--bg-card); border-radius: 18px; overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; transition: 0.3s; height: 100%; }
+        .p-card:hover { transform: translateY(-5px); }
+        .p-img { width: 100%; height: 220px; object-fit: cover; background: #2d3748; }
+        .p-content { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
+        
+        .product-title { font-size: 1.2rem; margin: 0 0 10px 0; font-weight: 700; }
+        .price-tag { background: var(--primary); color: white; padding: 4px 12px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; }
+        
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 4px; }
+        .info-label { color: var(--text-muted); }
+        
+        .stock-section { margin: 15px 0; background: rgba(0,0,0,0.1); padding: 10px; border-radius: 10px; }
+        .stock-bar-bg { height: 10px; background: rgba(51, 65, 85, 0.5); border-radius: 10px; overflow: hidden; }
+        .stock-bar-fill { height: 100%; transition: 1s ease-in-out; }
+        
+        .profit-box { margin-top: auto; background: rgba(16, 185, 129, 0.1); border: 1px dashed var(--secondary); padding: 12px; border-radius: 12px; text-align: center; }
+        .profit-box .amount { display: block; font-size: 1.4rem; font-weight: 800; color: var(--secondary); }
+        .profit-box .label { font-size: 0.8rem; color: var(--text-muted); }
+
+        .search-input { width: 100%; padding: 15px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main); margin-bottom: 25px; outline: none; box-sizing: border-box; }
+        
+        @media (max-width: 600px) {
+            header { justify-content: center; text-align: center; flex-direction: column; }
+            .login-box { padding: 25px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1>شركة الخشاب</h1>
+            <p>لوحة التحكم الذكية</p>
+            <div class="input-group">
+                <label>اسم المستخدم</label>
+                <input type="text" id="username" placeholder="أدخل اسم المستخدم">
+            </div>
+            <div class="input-group">
+                <label>كلمة المرور</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+            <button class="login-btn" onclick="checkLogin()">تسجيل الدخول</button>
+            <p id="error-msg" style="color: var(--danger); margin-top: 15px; display: none; font-size: 0.9rem;">بيانات الدخول غير صحيحة!</p>
+        </div>
+    </div>
+
+    <div id="welcome-toast">أهلاً أستاذ عمرو الخشاب 👋</div>
+
+    <div id="main-content">
+        <div class="container">
+            <header>
+                <h2 id="view-title" style="margin:0">لوحة التحكم</h2>
+                <div style="display:flex; gap:8px">
+                    <button class="btn btn-ghost" id="homeBtn" style="display:none" onclick="navigateTo('home')">الرئيسية</button>
+                    <button class="btn btn-primary" onclick="refreshData()">🔄 تحديث</button>
+                    <button class="btn btn-ghost" onclick="toggleTheme()">🌓</button>
+                    <button class="btn btn-ghost" onclick="location.reload()" title="تسجيل خروج">🚪</button>
+                </div>
+            </header>
+
+            <div id="home" class="section active">
+                <div class="stats-grid" style="margin-top: 30px;">
+                    <div class="stat-card" style="cursor:pointer; border-bottom: 5px solid var(--primary)" onclick="navigateTo('finance')">
+                        <span style="font-size: 2.5rem">📊</span>
+                        <h3>التقارير المالية</h3>
+                    </div>
+                    <div class="stat-card" style="cursor:pointer; border-bottom: 5px solid var(--secondary)" onclick="navigateTo('inventory')">
+                        <span style="font-size: 2.5rem">📦</span>
+                        <h3>إدارة المخزون</h3>
+                    </div>
+                    <div class="stat-card" style="cursor:pointer; border-bottom: 5px solid var(--warning)" onclick="navigateTo('orders-section')">
+                        <span style="font-size: 2.5rem">🛒</span>
+                        <h3>حالة الأوردرات</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div id="orders-section" class="section">
+                <div id="orders-status-grid" class="stats-grid"></div>
+            </div>
+
+            <div id="finance" class="section">
+                <div class="stats-grid" id="finance-stats-container">
+                    <div class="stat-card" style="border-bottom: 5px solid var(--primary)"><h3>إجمالي المبيعات</h3><div class="value" id="stat-sales">0</div></div>
+                    <div class="stat-card" style="border-bottom: 5px solid var(--danger)"><h3>إجمالي المصاريف</h3><div class="value" id="stat-cost">0</div></div>
+                    <div class="stat-card" style="border-bottom: 5px solid var(--secondary)"><h3>صافي الربح</h3><div class="value" id="stat-profit">0</div></div>
+                </div>
+            </div>
+
+            <div id="inventory" class="section">
+                <input type="text" class="search-input" id="inventorySearch" placeholder="🔍 ابحث في كافة تفاصيل المنتج..." onkeyup="handleSearch()">
+                <div class="inventory-grid" id="inventory-list"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const AUTH = { u: 'user', p: '123' };
+    const INVENTORY_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1_bqeksja6meIcR870UAA3XBKNvp5d_Cugn45UpB_w0GZVu86RU8cEUjktuRnVDePfqtmFEgY02Jp/pub?gid=0&single=true&output=csv'; 
+    const FINANCE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1_bqeksja6meIcR870UAA3XBKNvp5d_Cugn45UpB_w0GZVu86RU8cEUjktuRnVDePfqtmFEgY02Jp/pub?gid=292030042&single=true&output=csv';
+    const ORDERS_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR1_bqeksja6meIcR870UAA3XBKNvp5d_Cugn45UpB_w0GZVu86RU8cEUjktuRnVDePfqtmFEgY02Jp/pub?gid=603199874&single=true&output=csv';
+
+    let inventoryData = [], financeDataRaw = [], ordersData = [];
+    let inventoryHeaders = [];
+
+    function checkLogin() {
+        const uInput = document.getElementById('username').value;
+        const pInput = document.getElementById('password').value;
+        if (uInput === AUTH.u && pInput === AUTH.p) {
+            document.getElementById('login-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('login-overlay').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                showWelcome();
+                refreshData();
+            }, 500);
+        } else {
+            document.getElementById('error-msg').style.display = 'block';
+        }
+    }
+
+    function showWelcome() {
+        const toast = document.getElementById('welcome-toast');
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function parseCSV(url) {
+        try {
+            const response = await fetch(url + '&t=' + new Date().getTime());
+            const text = await response.text();
+            const rows = text.split('\n').filter(r => r.trim() !== '').map(row => {
+                return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+            });
+            const headers = rows[0];
+            return { headers, data: rows.slice(1).map(row => {
+                let obj = {};
+                headers.forEach((h, i) => obj[h] = row[i] || "");
+                return obj;
+            })};
+        } catch (e) { return { headers: [], data: [] }; }
+    }
+
+    async function refreshData() {
+        document.getElementById('view-title').innerText = "جاري المزامنة...";
+        const [inv, fin, ord] = await Promise.all([parseCSV(INVENTORY_URL), parseCSV(FINANCE_URL), parseCSV(ORDERS_URL)]);
+        inventoryData = inv.data;
+        inventoryHeaders = inv.headers;
+        financeDataRaw = fin;
+        ordersData = ord;
+        document.getElementById('view-title').innerText = "لوحة التحكم";
+        renderCurrentSection();
+    }
+
+    function renderInventory(data) {
+        const list = document.getElementById('inventory-list');
+        list.innerHTML = data.map(p => {
+            if(!p['اسم المنتج']) return '';
+            const total = parseInt(p['المخزون الكلي']) || 0;
+            const remaining = parseInt(p['المتبقي']) || 0;
+            const sold = total - remaining;
+            const profitPer = parseFloat(p['ربح القطعة']) || 0;
+            const netProfit = sold * profitPer;
+            const percent = total > 0 ? Math.round((remaining / total) * 100) : 0;
+            const statusColor = percent <= 25 ? 'var(--danger)' : 'var(--secondary)';
+
+            // بناء الصفوف الديناميكية لكل البيانات
+            let extraInfo = "";
+            inventoryHeaders.forEach(h => {
+                if(!['اسم المنتج', 'رابط الصورة', 'ربح القطعة', 'المخزون الكلي', 'المتبقي'].includes(h) && p[h]) {
+                    extraInfo += `<div class="info-row"><span class="info-label">${h}:</span><b>${p[h]}</b></div>`;
+                }
+            });
+
+            return `
+                <div class="p-card">
+                    <img src="${p['رابط الصورة'] || 'https://via.placeholder.com/400'}" class="p-img">
+                    <div class="p-content">
+                        <h3 class="product-title">${p['اسم المنتج']}</h3>
+                        ${extraInfo}
+                        <div class="info-row"><span class="info-label">المبيعات:</span><b>${sold} قطعة</b></div>
+                        <div class="stock-section">
+                            <div class="info-row"><span class="info-label">المتبقي بالمخزن:</span><b style="color:${statusColor}">${percent}%</b></div>
+                            <div class="stock-bar-bg"><div class="stock-bar-fill" style="width:${percent}%; background:${statusColor}"></div></div>
+                        </div>
+                        <div class="profit-box">
+                            <span class="label">صافي الربح المحقق</span>
+                            <span class="amount">${netProfit.toLocaleString()} ج.م</span>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function renderOrdersStatus() {
+        const grid = document.getElementById('orders-status-grid');
+        grid.innerHTML = '';
+        let grandTotal = 0;
+        let cardsHtml = "";
+        ordersData.headers.forEach(h => {
+            let sum = 0;
+            ordersData.data.forEach(row => {
+                let val = row[h] ? row[h].toString().replace(/[^0-9.]/g, '') : 0;
+                sum += parseFloat(val) || 0;
+            });
+            grandTotal += sum;
+            cardsHtml += `<div class="stat-card"><h3>${h}</h3><div class="value">${sum.toLocaleString()}</div></div>`;
+        });
+        grid.innerHTML = `<div class="stat-card total-card"><h3>إجمالي الأوردرات</h3><div class="value" style="color:var(--info)">${grandTotal.toLocaleString()}</div></div>` + cardsHtml;
+    }
+
+    function updateFinance() {
+        let rev = 0, exp = 0;
+        financeDataRaw.data.forEach(row => {
+            const vals = Object.values(row);
+            rev += parseFloat(vals[0]) || 0; // العمود الأول للمبيعات
+            for(let i=1; i<vals.length; i++) exp += parseFloat(vals[i]) || 0; // باقي الأعمدة للمصاريف
+        });
+        document.getElementById('stat-sales').innerText = rev.toLocaleString() + " ج.م";
+        document.getElementById('stat-cost').innerText = exp.toLocaleString() + " ج.م";
+        document.getElementById('stat-profit').innerText = (rev - exp).toLocaleString() + " ج.م";
+    }
+
+    function navigateTo(id) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.getElementById('homeBtn').style.display = id === 'home' ? 'none' : 'inline-block';
+        renderCurrentSection();
+    }
+
+    function renderCurrentSection() {
+        const id = document.querySelector('.section.active').id;
+        if(id === 'inventory') renderInventory(inventoryData);
+        if(id === 'finance') updateFinance();
+        if(id === 'orders-section') renderOrdersStatus();
+    }
+
+    function handleSearch() {
+        const query = document.getElementById('inventorySearch').value.toLowerCase();
+        renderInventory(inventoryData.filter(p => Object.values(p).some(val => val.toString().toLowerCase().includes(query))));
+    }
+
+    function toggleTheme() { document.documentElement.classList.toggle('light-mode'); }
+    
+    document.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && document.getElementById('login-overlay').style.display !== 'none') checkLogin();
+    });
+</script>
+</body>
+</html>
